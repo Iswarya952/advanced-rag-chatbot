@@ -1,0 +1,13 @@
+.env
+
+vectorstore/
+
+data/uploaded_pdfs/
+
+__pycache__/
+
+*.pyc
+
+.streamlit/
+
+chats.db
