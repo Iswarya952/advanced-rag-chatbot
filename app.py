@@ -17,6 +17,7 @@ from utils.cache_manager import (
     save_to_cache
 )
 from utils.citations import format_sources
+from utils.rewrite import rewrite_query
 
 
 # -----------------------------------
@@ -34,7 +35,7 @@ st.title(
 )
 
 st.caption(
-    "🚀 Multi-PDF RAG Chatbot with Source Citations"
+    "🚀 Multi-PDF RAG Chatbot with Query Rewrite + MMR Retrieval"
 )
 
 
@@ -96,42 +97,16 @@ with st.sidebar:
 # DOCUMENT PROCESSING
 # -----------------------------------
 
-def process_documents(
-    pdf_paths
-):
+def process_documents(pdf_paths):
 
-    docs = load_pdfs(
-        pdf_paths
-    )
-
-    st.write(
-        "Documents Loaded:",
-        len(docs)
-    )
+    docs = load_pdfs(pdf_paths)
 
     chunks = split_documents(
         docs
     )
 
-    st.write(
-        "Chunks Created:",
-        len(chunks)
-    )
-
-    if len(chunks) == 0:
-
-        st.error(
-            "❌ No text extracted"
-        )
-
-        st.stop()
-
     embeddings = (
         load_embedding_model()
-    )
-
-    st.write(
-        "Embeddings loaded"
     )
 
     vectorstore = (
@@ -139,10 +114,6 @@ def process_documents(
             chunks,
             embeddings
         )
-    )
-
-    st.write(
-        "Vector DB created"
     )
 
     retriever = (
@@ -161,22 +132,17 @@ def process_documents(
 if uploaded_files:
 
     st.session_state.retriever = None
-    st.session_state.current_pdf = ""
 
     os.makedirs(
         "data/uploaded_pdfs",
         exist_ok=True
     )
 
-    # delete old PDFs
-
     for old in glob.glob(
         "data/uploaded_pdfs/*"
     ):
 
         os.remove(old)
-
-    # delete old vector db
 
     if os.path.exists(
         "vectorstore"
@@ -210,7 +176,7 @@ if uploaded_files:
         )
 
     with st.spinner(
-        "📚 Processing PDFs..."
+        "Processing PDFs..."
     ):
 
         retriever = (
@@ -221,20 +187,12 @@ if uploaded_files:
 
         llm = load_llm()
 
-        st.session_state.retriever = (
-            retriever
-        )
-
-        st.session_state.llm = (
-            llm
-        )
-
-        st.session_state.current_pdf = (
-            str(pdf_paths)
-        )
+        st.session_state.retriever = retriever
+        st.session_state.llm = llm
+        st.session_state.current_pdf = str(pdf_paths)
 
     st.success(
-        "✅ PDFs processed successfully!"
+        "PDFs Processed"
     )
 
 
@@ -258,7 +216,7 @@ for msg in st.session_state.messages:
 # -----------------------------------
 
 query = st.chat_input(
-    "Ask questions from uploaded PDFs..."
+    "Ask from PDFs..."
 )
 
 
@@ -279,7 +237,7 @@ if query:
     if retriever is None:
 
         st.warning(
-            "⚠ Upload PDF first"
+            "Upload PDF first"
         )
 
     else:
@@ -297,19 +255,15 @@ if query:
         ):
 
             with st.spinner(
-                "🤖 Thinking..."
+                "Thinking..."
             ):
 
                 start = time.time()
 
                 cache_key = (
-
                     query
-
                     + "_"
-
                     + st.session_state.current_pdf
-
                 )
 
                 cached = (
@@ -318,9 +272,24 @@ if query:
                     )
                 )
 
+                # QUERY REWRITE
+
+                rewritten_query = (
+                    rewrite_query(
+                        query,
+                        llm
+                    )
+                )
+
+                st.caption(
+f"Rewritten Query: {rewritten_query}"
+                )
+
+                # RETRIEVAL
+
                 retrieved_docs = (
                     retriever.invoke(
-                        query
+                        rewritten_query
                     )
                 )
 
@@ -387,7 +356,7 @@ Question:
 
 ---
 
-### 📚 Sources
+### Sources
 
 {source_text}
 
@@ -400,7 +369,7 @@ Question:
                 end = time.time()
 
                 st.caption(
-f"⏱ Response generated in {round(end-start,2)} seconds"
+f"Response Time: {round(end-start,2)} sec"
                 )
 
         st.session_state.messages.append(
