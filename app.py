@@ -18,6 +18,7 @@ from utils.cache_manager import (
 )
 from utils.citations import format_sources
 from utils.rewrite import rewrite_query
+from utils.reranker import rerank_documents
 
 
 # -----------------------------------
@@ -35,7 +36,7 @@ st.title(
 )
 
 st.caption(
-    "🚀 Multi-PDF RAG Chatbot with Query Rewrite + MMR Retrieval"
+    "🚀 Multi-PDF RAG Chatbot with Query Rewrite + MMR + Reranking"
 )
 
 
@@ -65,14 +66,16 @@ with st.sidebar:
     st.header("📂 Upload PDFs")
 
     uploaded_files = st.file_uploader(
-        "Upload Multiple PDFs",
+        "Upload PDFs",
         type=["pdf"],
         accept_multiple_files=True
     )
 
     st.divider()
 
-    if st.button("🗑 Clear Chat"):
+    if st.button(
+        "🗑 Clear Chat"
+    ):
 
         st.session_state.messages = []
         st.session_state.retriever = None
@@ -82,7 +85,9 @@ with st.sidebar:
 
     st.divider()
 
-    st.subheader("📜 Previous Chats")
+    st.subheader(
+        "📜 Previous Chats"
+    )
 
     history = get_history()
 
@@ -97,9 +102,13 @@ with st.sidebar:
 # DOCUMENT PROCESSING
 # -----------------------------------
 
-def process_documents(pdf_paths):
+def process_documents(
+    pdf_paths
+):
 
-    docs = load_pdfs(pdf_paths)
+    docs = load_pdfs(
+        pdf_paths
+    )
 
     chunks = split_documents(
         docs
@@ -158,8 +167,7 @@ if uploaded_files:
     for file in uploaded_files:
 
         path = (
-            f"data/uploaded_pdfs/"
-            f"{file.name}"
+            f"data/uploaded_pdfs/{file.name}"
         )
 
         with open(
@@ -176,7 +184,7 @@ if uploaded_files:
         )
 
     with st.spinner(
-        "Processing PDFs..."
+        "📚 Processing PDFs..."
     ):
 
         retriever = (
@@ -189,10 +197,12 @@ if uploaded_files:
 
         st.session_state.retriever = retriever
         st.session_state.llm = llm
-        st.session_state.current_pdf = str(pdf_paths)
+        st.session_state.current_pdf = str(
+            pdf_paths
+        )
 
     st.success(
-        "PDFs Processed"
+        "✅ PDFs processed"
     )
 
 
@@ -216,7 +226,7 @@ for msg in st.session_state.messages:
 # -----------------------------------
 
 query = st.chat_input(
-    "Ask from PDFs..."
+    "Ask questions..."
 )
 
 
@@ -237,7 +247,7 @@ if query:
     if retriever is None:
 
         st.warning(
-            "Upload PDF first"
+            "⚠ Upload PDF first"
         )
 
     else:
@@ -255,15 +265,19 @@ if query:
         ):
 
             with st.spinner(
-                "Thinking..."
+                "🤖 Thinking..."
             ):
 
                 start = time.time()
 
                 cache_key = (
+
                     query
+
                     + "_"
+
                     + st.session_state.current_pdf
+
                 )
 
                 cached = (
@@ -290,6 +304,15 @@ f"Rewritten Query: {rewritten_query}"
                 retrieved_docs = (
                     retriever.invoke(
                         rewritten_query
+                    )
+                )
+
+                # RERANKING
+
+                retrieved_docs = (
+                    rerank_documents(
+                        rewritten_query,
+                        retrieved_docs
                     )
                 )
 
@@ -356,7 +379,7 @@ Question:
 
 ---
 
-### Sources
+### 📚 Sources
 
 {source_text}
 
@@ -369,7 +392,7 @@ Question:
                 end = time.time()
 
                 st.caption(
-f"Response Time: {round(end-start,2)} sec"
+f"⏱ Response time: {round(end-start,2)} sec"
                 )
 
         st.session_state.messages.append(
