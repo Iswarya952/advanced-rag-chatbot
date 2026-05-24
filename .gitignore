@@ -1,13 +1,46 @@
+# Environment
 .env
+.envrc
+.venv/
+venv/
+ENV/
 
+# Vector DB
 vectorstore/
 
+# Uploaded files
 data/uploaded_pdfs/
 
-__pycache__/
-
-*.pyc
-
-.streamlit/
-
+# Database
 chats.db
+chat_history.db
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# Streamlit
+.streamlit/
+.streamlit/secrets.toml
+
+# Temporary
+tempCodeRunnerFile.py
