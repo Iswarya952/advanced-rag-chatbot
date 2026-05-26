@@ -19,6 +19,7 @@ from utils.cache_manager import (
 from utils.citations import format_sources
 from utils.rewrite import rewrite_query
 from utils.reranker import rerank_documents
+from utils.refine import refine_answer
 
 
 # -----------------------------------
@@ -296,7 +297,7 @@ if query:
                 )
 
                 st.caption(
-f"Rewritten Query: {rewritten_query}"
+f"Rewrite: {rewritten_query}"
                 )
 
                 # RETRIEVAL
@@ -307,7 +308,7 @@ f"Rewritten Query: {rewritten_query}"
                     )
                 )
 
-                # RERANKING
+                # RERANK
 
                 retrieved_docs = (
                     rerank_documents(
@@ -322,40 +323,14 @@ f"Rewritten Query: {rewritten_query}"
 
                 else:
 
-                    context = "\n\n".join([
-
-f"""
-Page:
-{doc.metadata.get('page',0)+1}
-
-Content:
-{doc.page_content}
-"""
-
-for doc in retrieved_docs
-
-])
-
-                    final_prompt = f"""
-
-{SYSTEM_PROMPT}
-
-Context:
-{context}
-
-Question:
-{query}
-
-"""
-
-                    response = (
-                        llm.invoke(
-                            final_prompt
-                        )
-                    )
+                    # REFINE
 
                     answer = (
-                        response.content
+                        refine_answer(
+                            query,
+                            retrieved_docs,
+                            llm
+                        )
                     )
 
                     save_to_cache(
@@ -392,7 +367,7 @@ Question:
                 end = time.time()
 
                 st.caption(
-f"⏱ Response time: {round(end-start,2)} sec"
+f"⏱ {round(end-start,2)} sec"
                 )
 
         st.session_state.messages.append(
